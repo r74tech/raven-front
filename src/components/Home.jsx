@@ -23,9 +23,16 @@ export default function Home() {
   const [availableIndexes, setAvailableIndexes] = useState([]);
   const [showModal, setShowModal] = useState(false);
 
+  // 検索フィールドを状態で管理
+  const [searchFields, setSearchFields] = useState({
+    title: true,
+    source: true,
+    created_by: false,
+  });
+
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('apiKey') || import.meta.env.VITE_MEILISEARCH_API_KEY;
-    const storedIndexName = localStorage.getItem('indexName') || 'site_scp-jp';
+    const storedApiKey = sessionStorage.getItem('apiKey') || import.meta.env.VITE_MEILISEARCH_API_KEY;
+    const storedIndexName = sessionStorage.getItem('indexName') || 'site_scp-jp';
     if (storedApiKey) {
       setApiKey(storedApiKey);
       const client = instantMeiliSearch(import.meta.env.VITE_MEILISEARCH_API_URL, storedApiKey);
@@ -53,11 +60,23 @@ export default function Home() {
   };
 
   const saveSettings = () => {
-    localStorage.setItem('apiKey', apiKey);
-    localStorage.setItem('indexName', indexName);
+    sessionStorage.setItem('apiKey', apiKey);
+    sessionStorage.setItem('indexName', indexName);
     const client = instantMeiliSearch(import.meta.env.VITE_MEILISEARCH_API_URL, apiKey);
     setSearchClient(client.searchClient);
     setShowModal(false);
+  };
+
+  const handleSearchFieldChange = (field) => {
+    setSearchFields({
+      ...searchFields,
+      [field]: !searchFields[field],
+    });
+  };
+
+  // 検索対象フィールドを取得
+  const getSearchableAttributes = () => {
+    return Object.keys(searchFields).filter((field) => searchFields[field]);
   };
 
   if (!searchClient) {
@@ -77,7 +96,7 @@ export default function Home() {
             hitsPerPage={10}
             attributesToSnippet={['source:5', 'fullname:5']}
             snippetEllipsisText={'...'}
-            attributesToHighlight={['*']}
+            restrictSearchableAttributes={getSearchableAttributes()}
           />
 
           <div className="mb-6">
@@ -135,21 +154,51 @@ export default function Home() {
                     }}
                   />
                 </div>
+
+                <h2 className="text-lg font-semibold mt-6 mb-4 text-gray-900">検索対象フィールド</h2>
+                <div>
+                  <label className="block mb-2">
+                    <input
+                      type="checkbox"
+                      className="mr-2 rounded"
+                      checked={searchFields.title}
+                      onChange={() => handleSearchFieldChange('title')}
+                    />
+                    タイトル
+                  </label>
+                  <label className="block mb-2">
+                    <input
+                      type="checkbox"
+                      className="mr-2 rounded"
+                      checked={searchFields.source}
+                      onChange={() => handleSearchFieldChange('source')}
+                    />
+                    ソース
+                  </label>
+                  <label className="block mb-2">
+                    <input
+                      type="checkbox"
+                      className="mr-2 rounded"
+                      checked={searchFields.created_by}
+                      onChange={() => handleSearchFieldChange('created_by')}
+                    />
+                    作成者
+                  </label>
+                </div>
               </div>
               <div className="mt-4">
                 <button
-                onClick={() => setShowModal(true)}
-                className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  onClick={() => setShowModal(true)}
+                  className="w-full px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                 >
-                設定
+                  設定
                 </button>
               </div>
             </div>
 
-
             <div className="w-full md:w-2/3">
               <div className="bg-white p-4 rounded-lg shadow">
-                <SearchResults />
+                <SearchResults indexName={indexName} />
               </div>
             </div>
           </div>
@@ -211,8 +260,8 @@ export default function Home() {
   )
 }
 
-function SearchResults() {
-  const { results, isSearching } = useInstantSearch()
+function SearchResults({ indexName }) {
+  const { results, isSearching } = useInstantSearch();
 
   if (isSearching) {
     return (
@@ -228,11 +277,11 @@ function SearchResults() {
           strokeWidthSecondary={4}
         />
       </div>
-    )
+    );
   }
 
   if (results.nbHits === 0) {
-    return <div className="text-center text-gray-500">検索結果が見つかりませんでした</div>
+    return <div className="text-center text-gray-500">検索結果が見つかりませんでした</div>;
   }
 
   return (
@@ -243,12 +292,12 @@ function SearchResults() {
         }}
         translations={{
           stats(nbHits, processingTimeMS) {
-            return `${nbHits} 件の結果が見つかりました (${processingTimeMS} ms)`
+            return `${nbHits} 件の結果が見つかりました (${processingTimeMS} ms)`;
           },
         }}
       />
       <Hits
-        hitComponent={Hit}
+        hitComponent={(props) => <Hit {...props} indexName={indexName} />}
         classNames={{
           list: 'space-y-4',
         }}
@@ -264,21 +313,49 @@ function SearchResults() {
         />
       </div>
     </>
-  )
+  );
 }
 
-function Hit({ hit }) {
+
+function Hit({ hit, indexName }) {
+  const hitFields = Object.keys(hit._highlightResult).filter((field) => {
+    const highlightedValue = hit._highlightResult[field].value;
+    return /<mark>.*<\/mark>/.test(highlightedValue);
+  });
+
+  // indexName から "site_" を削除したクリーンなバージョンを取得
+  const cleanIndexName = indexName.replace(/^site_/, '');
+
+  // インデックス名を考慮したリンクを生成
+  const pageUrl = `http://${cleanIndexName}.wikidot.com/${hit.fullname}`;
+
   return (
-    <div className="border-b border-gray-200 pb-4">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-        <Highlight attribute="title" hit={hit} />
-      </h3>
-      <p className="text-sm text-gray-600 mb-2">
-        <Snippet attribute="fullname" hit={hit} />
-      </p>
-      <div className="text-xs text-gray-500">
-        <Snippet attribute="source" hit={hit} />
+    <a href={pageUrl} className="block border-b border-gray-200 p-4 mb-4 hover:bg-gray-100 rounded-lg transition" target="_blank" rel="noopener noreferrer">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <Highlight attribute="title" hit={hit} />
+        </h3>
+        <p className="text-sm text-gray-600 mb-2">
+          <Snippet attribute="fullname" hit={hit} />
+        </p>
+        <div className="text-xs text-gray-500">
+          <Snippet attribute="source" hit={hit} />
+        </div>
       </div>
-    </div>
-  )
+
+      <div className="text-xs text-gray-400 mt-2">
+        ヒットした属性:
+        {hitFields.length > 0 ? (
+          hitFields.map((field) => (
+            <span key={field} className="ml-2">
+              {field}
+            </span>
+          ))
+        ) : (
+          <span>ハイライトなし</span>
+        )}
+      </div>
+    </a>
+  );
 }
+
