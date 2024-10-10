@@ -39,8 +39,8 @@ jobs:
         run: pnpm install
       - name: Create environment file
         run: |
-          echo "VITE_MEILISEARCH_API_URL=${{ secrets.VITE_MEILISEARCH_API_URL }}" > .env.production
-          echo "VITE_MEILISEARCH_API_KEY=${{ secrets.VITE_MEILISEARCH_API_KEY }}" >> .env.production
+          echo "VITE_MEILISEARCH_API_URL=${{ secrets.VITE_MEILISEARCH_API_URL }}" > .env
+          echo "VITE_MEILISEARCH_API_KEY=${{ secrets.VITE_MEILISEARCH_API_KEY }}" >> .env
       - name: Build
         run: pnpm build
       - name: Setup Pages
