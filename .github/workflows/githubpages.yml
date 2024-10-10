@@ -15,17 +15,9 @@ permissions:
   pages: write
   id-token: write
 
-# 1 つの同時デプロイメントを可能にする
-concurrency:
-  group: 'pages'
-  cancel-in-progress: true
-
 jobs:
   # デプロイするだけなので、単一のデプロイジョブ
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
