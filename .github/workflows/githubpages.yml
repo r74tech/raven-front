@@ -11,7 +11,7 @@ on:
 
 # GITHUB_TOKEN のパーミッションを設定し、GitHub Pages へのデプロイを許可します
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
