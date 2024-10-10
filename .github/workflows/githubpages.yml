@@ -50,6 +50,8 @@ jobs:
         with:
           # dist リポジトリのアップロード
           path: './dist'
+      - name: List build files
+        run: ls -al ./dist
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v4
         with:
