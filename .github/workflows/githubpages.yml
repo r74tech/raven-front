@@ -34,15 +34,17 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: 18
-          cache: 'yarn'
+          cache: 'pnpm'
+      - name: Install pnpm
+        run: npm install -g pnpm
       - name: Install dependencies
-        run: yarn install
+        run: pnpm install
       - name: Create environment file
         run: |
           echo "VITE_MEILISEARCH_API_URL=${{ secrets.VITE_MEILISEARCH_API_URL }}" > .env.production
           echo "VITE_MEILISEARCH_API_KEY=${{ secrets.VITE_MEILISEARCH_API_KEY }}" >> .env.production
       - name: Build
-        run: yarn build
+        run: pnpm build
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
