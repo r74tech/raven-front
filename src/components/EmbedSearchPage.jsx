@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   InstantSearch,
   SearchBox,
@@ -23,6 +23,34 @@ export default function Component() {
   const [hitsPerPage, setHitsPerPage] = useState(10)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const indexName = 'site_scp-jp'
+  const [, setIframeHeight] = useState('720px')
+
+  useEffect(() => {
+    const updateIframeHeight = () => {
+      const newHeight = document.documentElement.scrollHeight;
+      setIframeHeight(newHeight);
+
+      // Send the height to the parent window
+      window.parent.postMessage({ pageHeight: newHeight }, '*');
+    };
+
+    // Observe changes in the DOM to trigger height updates
+    const observer = new MutationObserver(updateIframeHeight);
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // Initial height update
+    updateIframeHeight();
+
+    // Add event listener for resizing the iframe when window is resized
+    window.addEventListener('resize', updateIframeHeight);
+
+    // Cleanup the event listener and observer on unmount
+    return () => {
+      window.removeEventListener('resize', updateIframeHeight);
+      observer.disconnect();
+    };
+  }, []);
+
 
   return (
     <div className="min-h-screen bg-gray-100 shadow-lg rounded-lg p-6">
