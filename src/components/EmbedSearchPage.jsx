@@ -3,8 +3,7 @@ import {
   InstantSearch,
   SearchBox,
   Hits,
-  RefinementList,
-  SortBy,
+  Snippet,
   Configure,
   Pagination,
   Highlight,
@@ -23,11 +22,11 @@ const { searchClient } = instantMeiliSearch(
 export default function Component() {
   const [hitsPerPage, setHitsPerPage] = useState(10)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [sortBy, setSortBy] = useState('site_scp-jp')
+  const indexName = 'site_scp-jp'
 
   return (
     <div className="min-h-screen bg-gray-100 shadow-lg rounded-lg p-6">
-      <InstantSearch searchClient={searchClient} indexName="site_scp-jp">
+      <InstantSearch searchClient={searchClient} indexName={indexName}>
         <Configure
           hitsPerPage={hitsPerPage}
           attributesToSnippet={['source:5']}
@@ -77,23 +76,6 @@ export default function Component() {
                           <option value="50">50件</option>
                         </select>
                       </div>
-                      <div className="px-4 py-2">
-                        <h3 className="font-semibold text-gray-900 mb-2">並び替え</h3>
-                        <SortBy
-                          items={[
-                            { value: 'site_scp-jp', label: '関連度順' },
-                            { value: 'site_scp-jp:created_at:desc', label: '新しい順' },
-                            { value: 'site_scp-jp:created_at:asc', label: '古い順' },
-                            { value: 'site_scp-jp:title:asc', label: 'タイトル昇順' },
-                            { value: 'site_scp-jp:title:desc', label: 'タイトル降順' },
-                          ]}
-                          classNames={{
-                            root: 'relative inline-block text-left w-full',
-                            select: 'block appearance-none w-full bg-white border border-gray-300 hover:border-gray-400 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:shadow-outline',
-                          }}
-                          onChange={(value) => setSortBy(value)}
-                        />
-                      </div>
                     </div>
                     <button
                       onClick={() => setIsMenuOpen(false)}
@@ -108,14 +90,14 @@ export default function Component() {
           </Menu>
         </div>
         
-        <SearchResults />
+        <SearchResults indexName={indexName} />
         
       </InstantSearch>
     </div>
   )
 }
 
-function SearchResults() {
+function SearchResults({ indexName }) {
   const { results, indexUiState } = useInstantSearch()
 
   // 初期状態（検索クエリが空で、かつ検索が実行されていない）
@@ -147,7 +129,11 @@ function SearchResults() {
         }}
       />
 
-      <Hits hitComponent={Hit} />
+      <Hits         hitComponent={(props) => <Hit {...props} indexName={indexName} />}
+        classNames={{
+          list: 'space-y-4',
+        }}
+      />
       
       {results.nbHits > 0 && (
         <div className="mt-6">
@@ -165,20 +151,29 @@ function SearchResults() {
   )
 }
 
-function Hit({ hit }) {
-  const linkText = hit.title || hit.fullname
+
+
+function Hit({ hit, indexName }) {
+  // indexName から "site_" を削除したクリーンなバージョンを取得
+  const cleanIndexName = indexName.replace(/^site_/, '');
+
+  // インデックス名を考慮したリンクを生成
+  const pageUrl = `http://${cleanIndexName}.wikidot.com/${hit.fullname}`;
+
   return (
-    <div className="border-b border-gray-200 py-4">
-      <h2 className="text-xl font-semibold text-gray-900 mb-2">
-        <a href={hit.url} className="hover:underline">
-          {linkText}
-        </a>
-      </h2>
-      <p className="text-gray-600 mb-2">{hit.description}</p>
-      <p className="text-sm text-gray-500 mb-2">カテゴリ: {hit.category}</p>
-      <Highlight attribute="source" hit={hit} classNames={{
-        highlighted: 'bg-yellow-200',
-      }} />
-    </div>
-  )
+    <a href={pageUrl} className="block border-b border-gray-200 p-4 hover:bg-gray-300 rounded-lg transition" target="_blank" rel="noopener noreferrer">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <Highlight attribute="title" hit={hit} />
+        </h3>
+        <p className="text-sm text-gray-600 mb-2">
+          <Snippet attribute="fullname" hit={hit} />
+        </p>
+        <div className="text-xs text-gray-500">
+          <Snippet attribute="source" hit={hit} />
+        </div>
+      </div>
+    </a>
+  );
 }
+
